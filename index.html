@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PPAP Load Analysis</title>
+
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <style>
+    :root {
+      --siemens: #009999;
+      --siemens-dark: #00646b;
+      --siemens-blue: #007993;
+      --bg: #ffffff;
+      --card: #ffffff;
+      --border: #d9dee3;
+      --text: #1f2933;
+      --muted: #6b7280;
+      --soft: #f6f8fa;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .dashboard {
+      padding: 22px 28px;
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 170px 1fr 760px;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      font-size: 31px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--siemens);
+      border-right: 1px solid #b8c2cc;
+      padding-right: 24px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 700;
+    }
+
+    .title p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .filter label {
+      display: block;
+      font-size: 12px;
+      color: #111827;
+      margin-bottom: 7px;
+    }
+
+    .filter select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      color: #374151;
+      font-size: 13px;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .kpi {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      background: var(--card);
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      align-items: center;
+      min-height: 74px;
+    }
+
+    .kpi-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--siemens), var(--siemens-dark));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 25px;
+      font-weight: 700;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #000;
+      line-height: 1;
+    }
+
+    .kpi-label {
+      margin-top: 8px;
+      color: #374151;
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 43% 57%;
+      gap: 14px;
+    }
+
+    .left-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    #trendChart, #barChart, #shareChart {
+      width: 100%;
+      height: 300px;
+    }
+
+    #heatmap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .heatmap-table {
+      border-collapse: collapse;
+      font-size: 12px;
+      width: 100%;
+    }
+
+    .heatmap-table th {
+      background: white;
+      color: #111827;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      padding: 7px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .heatmap-table td {
+      border-bottom: 1px solid #edf1f5;
+      border-right: 1px solid #edf1f5;
+      padding: 7px;
+      text-align: center;
+      min-width: 64px;
+    }
+
+    .heatmap-table .lead {
+      text-align: left;
+      min-width: 250px;
+      max-width: 250px;
+      font-weight: 500;
+      color: #1f2933;
+      background: white;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+    }
+
+    .heatmap-table .total-row td {
+      font-weight: 700;
+      border-top: 1px solid #b8c2cc;
+      background: #fafafa;
+    }
+
+    .change-list {
+      margin-top: 10px;
+    }
+
+    .change-row {
+      display: grid;
+      grid-template-columns: 1fr 40px 40px;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid #edf1f5;
+      font-size: 13px;
+    }
+
+    .up { color: #00843d; font-weight: 700; }
+    .down { color: #b42318; font-weight: 700; }
+    .flat { color: #6b7280; font-weight: 700; }
+
+    .footer {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <div class="brand">SIEMENS</div>
+
+      <div class="title">
+        <h1>PPAP Load Analysis</h1>
+        <p>Closed PPAPs by PPAP Lead | Oct 1, 2025 - Jun 2026</p>
+      </div>
+
+      <div class="filters">
+        <div class="filter">
+          <label>Date Range</label>
+          <select>
+            <option>Oct 1, 2025 - Jun 2026</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label>Business</label>
+          <select><option>All</option></select>
+        </div>
+        <div class="filter">
+          <label>Workflow Group</label>
+          <select><option>All</option></select>
+        </div>
+        <div class="filter">
+          <label>PPAP Lead</label>
+          <select><option>All</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-icon">✓</div>
+        <div>
+          <div class="kpi-value" id="totalClosed"></div>
+          <div class="kpi-label">Total Closed PPAPs</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-icon">👥</div>
+        <div>
+          <div class="kpi-value" id="activeLeads"></div>
+          <div class="kpi-label">Active PPAP Leads</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-icon">↗</div>
+        <div>
+          <div class="kpi-value" id="avgMonth"></div>
+          <div class="kpi-label">Average / Month</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-icon">▣</div>
+        <div>
+          <div class="kpi-value" id="peakMonth"></div>
+          <div class="kpi-label" id="peakMonthLabel"></div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-icon">◔</div>
+        <div>
+          <div class="kpi-value" id="maxLeadMonth"></div>
+          <div class="kpi-label">Max PPAPs / Lead / Month</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="left-stack">
+        <div class="card">
+          <h2>Closed PPAPs Trend</h2>
+          <div id="trendChart"></div>
+        </div>
+
+        <div class="card">
+          <h2>Top PPAP Leads by Closed PPAPs</h2>
+          <div id="barChart"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Closed PPAPs by PPAP Lead and Month</h2>
+        <div id="heatmap"></div>
+      </div>
+    </div>
+
+    <div class="bottom-grid">
+      <div class="card">
+        <h2>Share of Closed PPAPs by Lead</h2>
+        <div id="shareChart"></div>
+      </div>
+
+      <div class="card">
+        <h2>Change vs Previous Month</h2>
+        <div class="change-list" id="changeList"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>Source: PPAP System | Closed PPAPs by PPAP Owner</div>
+      <div>June 2026 included with 0 closed PPAPs</div>
+    </div>
+  </div>
+
+  <script>
+    const months = [
+      "Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026",
+      "Mar 2026", "Apr 2026", "May 2026", "Jun 2026"
+    ];
+
+    const rawData = [
+      { lead: "AGUILAR RODRIGUEZ, RAFAEL", values: [0,1,0,0,0,0,0,1,0] },
+      { lead: "ALVARADO RODRIGUEZ, NETZAHUALCOYOTL", values: [0,0,0,1,0,0,0,0,0] },
+      { lead: "ALVARES SALVADOR, SANDRA", values: [0,6,5,5,0,0,0,0,0] },
+      { lead: "BRIONES RODRIGUEZ, JESUS DANIEL", values: [4,0,0,0,0,0,0,0,0] },
+      { lead: "DE LEON ALANIS, ABI SILEM", values: [4,0,2,4,0,0,0,0,0] },
+      { lead: "FLORES DEL ANGEL, MARCO ARIEL", values: [1,0,0,0,0,1,0,0,0] },
+      { lead: "GARCIA LUNA, ALAN EDUARDO", values: [0,2,8,0,0,3,0,0,0] },
+      { lead: "MADRIGAL, CECILIA", values: [0,0,10,2,0,0,6,0,0] },
+      { lead: "MAGANA ENCINAS, ARLEEN VICTORIA", values: [0,0,0,3,3,3,0,0,0] },
+      { lead: "MARRUFO GARCIA, MANUEL ALEJANDRO", values: [0,4,0,7,0,0,0,0,0] },
+      { lead: "MONREAL MEDRANO, DANIEL ELEAZAR", values: [0,1,0,0,5,0,0,0,0] },
+      { lead: "OBREGON GONZALEZ, MARIA MAYELA", values: [0,0,3,0,0,0,0,0,0] },
+      { lead: "ORTIZ VALDES, RODRIGO EMMANUEL", values: [0,0,5,0,0,0,0,0,0] },
+      { lead: "PEREZ ALVIZO, LIZBETH", values: [0,0,1,0,0,1,0,0,0] },
+      { lead: "RODRIGUEZ GARCIA, RUBEN", values: [0,0,1,0,0,0,0,0,0] },
+      { lead: "SILVA ORTEGA, JOSE ROBERTO", values: [0,0,0,0,0,2,0,0,0] },
+      { lead: "SILVA PALOMO, ANDRE", values: [0,0,0,0,0,0,1,0,0] },
+      { lead: "SOTELO QUIJANO, OSVALDO", values: [1,0,0,0,0,0,0,0,0] },
+      { lead: "TREVIÑO DE LOS SANTOS, ANA SOFIA", values: [1,3,1,0,0,0,0,0,0] },
+      { lead: "VARGAS RODRIGUEZ, ANTONY ALEXANDER", values: [0,1,1,0,0,0,0,0,0] },
+      { lead: "ZAMORA RUIZ, MARCO ANTONIO", values: [0,0,1,0,0,0,1,0,0] }
+    ];
+
+    const totalsByMonth = months.map((m, i) =>
+      rawData.reduce((sum, row) => sum + row.values[i], 0)
+    );
+
+    const totalClosed = totalsByMonth.reduce((a, b) => a + b, 0);
+    const activeLeads = rawData.filter(d => d.values.reduce((a,b) => a+b, 0) > 0).length;
+    const avgMonth = (totalClosed / months.length).toFixed(1);
+    const maxValue = d3.max(rawData.flatMap(d => d.values));
+    const peakIndex = totalsByMonth.indexOf(d3.max(totalsByMonth));
+
+    document.getElementById("totalClosed").innerText = totalClosed;
+    document.getElementById("activeLeads").innerText = activeLeads;
+    document.getElementById("avgMonth").innerText = avgMonth;
+    document.getElementById("peakMonth").innerText = months[peakIndex];
+    document.getElementById("peakMonthLabel").innerText = `${totalsByMonth[peakIndex]} Closed PPAPs`;
+    document.getElementById("maxLeadMonth").innerText = maxValue;
+
+    google.charts.load("current", { packages: ["corechart"] });
+    google.charts.setOnLoadCallback(drawCharts);
+
+    function drawCharts() {
+      drawTrend();
+      drawTopBars();
+      drawShare();
+      drawHeatmap();
+      drawChanges();
+    }
+
+    function drawTrend() {
+      const data = new google.visualization.DataTable();
+      data.addColumn("string", "Month");
+      data.addColumn("number", "Closed PPAPs");
+      data.addRows(months.map((m, i) => [m, totalsByMonth[i]]));
+
+      const options = {
+        legend: "none",
+        chartArea: { left: 45, top: 20, width: "86%", height: "72%" },
+        colors: ["#007993"],
+        pointSize: 7,
+        lineWidth: 3,
+        backgroundColor: "transparent",
+        hAxis: { textStyle: { fontSize: 11, color: "#374151" } },
+        vAxis: { minValue: 0, textStyle: { fontSize: 11, color: "#374151" }, gridlines: { color: "#e5e7eb" } }
+      };
+
+      new google.visualization.AreaChart(document.getElementById("trendChart")).draw(data, options);
+    }
+
+    function drawTopBars() {
+      const top = rawData
+        .map(d => ({ lead: d.lead, total: d.values.reduce((a,b) => a+b, 0) }))
+        .sort((a,b) => b.total - a.total)
+        .slice(0, 7)
+        .reverse();
+
+      const data = new google.visualization.DataTable();
+      data.addColumn("string", "Lead");
+      data.addColumn("number", "Closed PPAPs");
+      data.addRows(top.map(d => [d.lead, d.total]));
+
+      const options = {
+        legend: "none",
+        chartArea: { left: 210, top: 15, width: "70%", height: "78%" },
+        colors: ["#008c95"],
+        backgroundColor: "transparent",
+        hAxis: { minValue: 0, gridlines: { color: "#e5e7eb" } },
+        vAxis: { textStyle: { fontSize: 11 } },
+        annotations: { alwaysOutside: true }
+      };
+
+      new google.visualization.BarChart(document.getElementById("barChart")).draw(data, options);
+    }
+
+    function drawShare() {
+      const top = rawData
+        .map(d => ({ lead: d.lead, total: d.values.reduce((a,b) => a+b, 0) }))
+        .sort((a,b) => b.total - a.total);
+
+      const topFive = top.slice(0, 5);
+      const others = top.slice(5).reduce((sum, d) => sum + d.total, 0);
+
+      const data = new google.visualization.DataTable();
+      data.addColumn("string", "Lead");
+      data.addColumn("number", "Closed PPAPs");
+      data.addRows([
+        ...topFive.map(d => [d.lead, d.total]),
+        ["Others", others]
+      ]);
+
+      const options = {
+        pieHole: 0.55,
+        chartArea: { left: 10, top: 20, width: "95%", height: "82%" },
+        colors: ["#00646b", "#007993", "#009999", "#4db6b6", "#7cc7c7", "#9aa3ad"],
+        backgroundColor: "transparent",
+        legend: { position: "right", textStyle: { fontSize: 11 } }
+      };
+
+      new google.visualization.PieChart(document.getElementById("shareChart")).draw(data, options);
+    }
+
+    function drawHeatmap() {
+      const sorted = [...rawData].sort((a,b) =>
+        b.values.reduce((x,y)=>x+y,0) - a.values.reduce((x,y)=>x+y,0)
+      );
+
+      const table = d3.select("#heatmap")
+        .append("table")
+        .attr("class", "heatmap-table");
+
+      const header = table.append("thead").append("tr");
+      header.append("th").attr("class", "lead").text("PPAP Lead");
+      months.forEach(m => header.append("th").text(m));
+      header.append("th").text("Total");
+      header.append("th").text("Avg / Month");
+
+      const color = d3.scaleLinear()
+        .domain([0, maxValue])
+        .range(["#ffffff", "#007993"]);
+
+      const body = table.append("tbody");
+
+      sorted.forEach(row => {
+        const tr = body.append("tr");
+        const total = row.values.reduce((a,b)=>a+b,0);
+        tr.append("td").attr("class", "lead").text(row.lead);
+
+        row.values.forEach(v => {
+          tr.append("td")
+            .style("background", v === 0 ? "#ffffff" : color(v))
+            .style("color", v >= 7 ? "#ffffff" : "#111827")
+            .text(v === 0 ? "" : v);
+        });
+
+        tr.append("td").style("font-weight", "700").text(total);
+        tr.append("td").text((total / months.length).toFixed(1));
+      });
+
+      const totalRow = body.append("tr").attr("class", "total-row");
+      totalRow.append("td").attr("class", "lead").text("Total");
+      totalsByMonth.forEach(v => totalRow.append("td").text(v));
+      totalRow.append("td").text(totalClosed);
+      totalRow.append("td").text(avgMonth);
+    }
+
+    function drawChanges() {
+      const previousMonthIndex = months.indexOf("May 2026");
+      const currentMonthIndex = months.indexOf("Jun 2026");
+
+      const changes = rawData
+        .map(d => ({
+          lead: d.lead,
+          current: d.values[currentMonthIndex],
+          previous: d.values[previousMonthIndex],
+          change: d.values[currentMonthIndex] - d.values[previousMonthIndex]
+        }))
+        .filter(d => d.current !== 0 || d.previous !== 0)
+        .sort((a,b) => Math.abs(b.change) - Math.abs(a.change))
+        .slice(0, 8);
+
+      const box = d3.select("#changeList");
+
+      changes.forEach(d => {
+        const row = box.append("div").attr("class", "change-row");
+        row.append("div").text(d.lead);
+        row.append("div")
+          .attr("class", d.change > 0 ? "up" : d.change < 0 ? "down" : "flat")
+          .text(d.change > 0 ? `+${d.change}` : d.change);
+        row.append("div").text(d.current);
+      });
+    }
+
+    window.addEventListener("resize", drawCharts);
+  </script>
+</body>
+</html>
+```
