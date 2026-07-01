@@ -146,6 +146,13 @@
       margin-top: 14px;
     }
 
+    .bottom-wide {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
     .card {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -160,7 +167,7 @@
       color: #111827;
     }
 
-    #trendChart, #barChart, #shareChart {
+    #trendChart, #barChart, #shareChart, #statusPctChart {
       width: 100%;
       height: 300px;
     }
@@ -296,7 +303,11 @@
         </div>
         <div class="filter">
           <label>PPAP Status</label>
-          <select><option>Complete + Pending</option></select>
+          <select id="statusFilter">
+            <option value="All">Complete + Pending</option>
+            <option value="Complete">Complete</option>
+            <option value="Pending">Pending</option>
+          </select>
         </div>
       </div>
     </div>
@@ -364,10 +375,17 @@
 
     <div class="bottom-grid">
       <div class="card">
-        <h2>Status Mix</h2>
+        <h2>Share of Total PPAPs by Lead</h2>
         <div id="shareChart"></div>
       </div>
 
+      <div class="card">
+        <h2>% Complete vs Pending by Lead</h2>
+        <div id="statusPctChart"></div>
+      </div>
+    </div>
+
+    <div class="bottom-wide">
       <div class="card">
         <h2>Change vs Previous Month</h2>
         <div class="change-list" id="changeList"></div>
@@ -409,66 +427,96 @@
       { lead: "RODRIGUEZ GARCIA RUBEN", status: "Pending", values: [7,0,5,0,1,0,0,0,0] }
     ];
 
-    const leadTotals = Array.from(
-      d3.rollup(
-        rawData,
-        rows => ({
-          complete: d3.sum(rows.filter(r => r.status === "Complete"), r => d3.sum(r.values)),
-          pending: d3.sum(rows.filter(r => r.status === "Pending"), r => d3.sum(r.values)),
-          total: d3.sum(rows, r => d3.sum(r.values))
-        }),
-        d => d.lead
-      ),
-      ([lead, totals]) => ({ lead, ...totals })
-    );
-
-    const totalsByMonthComplete = months.map((m, i) =>
-      rawData.filter(d => d.status === "Complete").reduce((sum, row) => sum + row.values[i], 0)
-    );
-
-    const totalsByMonthPending = months.map((m, i) =>
-      rawData.filter(d => d.status === "Pending").reduce((sum, row) => sum + row.values[i], 0)
-    );
-
-    const totalsByMonth = months.map((m, i) => totalsByMonthComplete[i] + totalsByMonthPending[i]);
-
-    const totalComplete = d3.sum(totalsByMonthComplete);
-    const totalPending = d3.sum(totalsByMonthPending);
-    const totalPPAP = totalComplete + totalPending;
-    const activeLeads = leadTotals.filter(d => d.total > 0).length;
-    const maxValue = d3.max(rawData.flatMap(d => d.values));
-    const peakIndex = totalsByMonth.indexOf(d3.max(totalsByMonth));
-
-    document.getElementById("totalPPAP").innerText = totalPPAP;
-    document.getElementById("totalComplete").innerText = totalComplete;
-    document.getElementById("totalPending").innerText = totalPending;
-    document.getElementById("activeLeads").innerText = activeLeads;
-    document.getElementById("peakMonth").innerText = months[peakIndex];
-    document.getElementById("peakMonthLabel").innerText = `${totalsByMonth[peakIndex]} Total PPAPs`;
+    let chartsReady = false;
 
     google.charts.load("current", { packages: ["corechart"] });
-    google.charts.setOnLoadCallback(drawCharts);
+    google.charts.setOnLoadCallback(() => {
+      chartsReady = true;
+      updateDashboard();
+    });
 
-    function drawCharts() {
-      drawTrend();
-      drawTopBars();
-      drawShare();
-      drawHeatmap();
-      drawChanges();
+    document.getElementById("statusFilter").addEventListener("change", updateDashboard);
+
+    function getFilteredData() {
+      const selectedStatus = document.getElementById("statusFilter").value;
+      if (selectedStatus === "All") return rawData;
+      return rawData.filter(d => d.status === selectedStatus);
     }
 
-    function drawTrend() {
+    function getLeadTotals(data) {
+      return Array.from(
+        d3.rollup(
+          data,
+          rows => ({
+            complete: d3.sum(rows.filter(r => r.status === "Complete"), r => d3.sum(r.values)),
+            pending: d3.sum(rows.filter(r => r.status === "Pending"), r => d3.sum(r.values)),
+            total: d3.sum(rows, r => d3.sum(r.values))
+          }),
+          d => d.lead
+        ),
+        ([lead, totals]) => ({ lead, ...totals })
+      );
+    }
+
+    function getTotalsByStatus(data, status) {
+      return months.map((m, i) =>
+        data.filter(d => d.status === status).reduce((sum, row) => sum + row.values[i], 0)
+      );
+    }
+
+    function updateDashboard() {
+      if (!chartsReady) return;
+
+      const data = getFilteredData();
+      const leadTotals = getLeadTotals(data);
+      const totalsByMonthComplete = getTotalsByStatus(data, "Complete");
+      const totalsByMonthPending = getTotalsByStatus(data, "Pending");
+      const totalsByMonth = months.map((m, i) => totalsByMonthComplete[i] + totalsByMonthPending[i]);
+
+      const totalComplete = d3.sum(totalsByMonthComplete);
+      const totalPending = d3.sum(totalsByMonthPending);
+      const totalPPAP = totalComplete + totalPending;
+      const activeLeads = leadTotals.filter(d => d.total > 0).length;
+      const maxValue = Math.max(1, d3.max(data.flatMap(d => d.values)) || 1);
+      const peakIndex = totalsByMonth.indexOf(d3.max(totalsByMonth));
+
+      document.getElementById("totalPPAP").innerText = totalPPAP;
+      document.getElementById("totalComplete").innerText = totalComplete;
+      document.getElementById("totalPending").innerText = totalPending;
+      document.getElementById("activeLeads").innerText = activeLeads;
+      document.getElementById("peakMonth").innerText = peakIndex >= 0 ? months[peakIndex] : "-";
+      document.getElementById("peakMonthLabel").innerText = peakIndex >= 0 ? `${totalsByMonth[peakIndex]} Total PPAPs` : "No PPAPs";
+
+      drawTrend(totalsByMonthComplete, totalsByMonthPending);
+      drawTopBars(leadTotals);
+      drawLeadShare(leadTotals, totalPPAP);
+      drawStatusPctByLead(leadTotals);
+      drawHeatmap(data, leadTotals, totalsByMonth, totalPPAP, maxValue);
+      drawChanges(data, leadTotals);
+    }
+
+    function drawTrend(totalsByMonthComplete, totalsByMonthPending) {
+      const selectedStatus = document.getElementById("statusFilter").value;
       const data = new google.visualization.DataTable();
       data.addColumn("string", "Month");
-      data.addColumn("number", "Complete");
-      data.addColumn("number", "Pending");
-      data.addRows(months.map((m, i) => [m, totalsByMonthComplete[i], totalsByMonthPending[i]]));
+
+      if (selectedStatus === "Complete") {
+        data.addColumn("number", "Complete");
+        data.addRows(months.map((m, i) => [m, totalsByMonthComplete[i]]));
+      } else if (selectedStatus === "Pending") {
+        data.addColumn("number", "Pending");
+        data.addRows(months.map((m, i) => [m, totalsByMonthPending[i]]));
+      } else {
+        data.addColumn("number", "Complete");
+        data.addColumn("number", "Pending");
+        data.addRows(months.map((m, i) => [m, totalsByMonthComplete[i], totalsByMonthPending[i]]));
+      }
 
       const options = {
-        isStacked: true,
+        isStacked: selectedStatus === "All",
         legend: { position: "top", alignment: "end", textStyle: { fontSize: 11 } },
         chartArea: { left: 45, top: 38, width: "86%", height: "66%" },
-        colors: ["#007993", "#9aa3ad"],
+        colors: selectedStatus === "Pending" ? ["#9aa3ad"] : selectedStatus === "Complete" ? ["#007993"] : ["#007993", "#9aa3ad"],
         pointSize: 6,
         lineWidth: 3,
         backgroundColor: "transparent",
@@ -479,23 +527,34 @@
       new google.visualization.AreaChart(document.getElementById("trendChart")).draw(data, options);
     }
 
-    function drawTopBars() {
+    function drawTopBars(leadTotals) {
+      const selectedStatus = document.getElementById("statusFilter").value;
       const top = [...leadTotals]
+        .filter(d => d.total > 0)
         .sort((a,b) => b.total - a.total)
         .slice(0, 7)
         .reverse();
 
       const data = new google.visualization.DataTable();
       data.addColumn("string", "Lead");
-      data.addColumn("number", "Complete");
-      data.addColumn("number", "Pending");
-      data.addRows(top.map(d => [d.lead, d.complete, d.pending]));
+
+      if (selectedStatus === "Complete") {
+        data.addColumn("number", "Complete");
+        data.addRows(top.map(d => [d.lead, d.complete]));
+      } else if (selectedStatus === "Pending") {
+        data.addColumn("number", "Pending");
+        data.addRows(top.map(d => [d.lead, d.pending]));
+      } else {
+        data.addColumn("number", "Complete");
+        data.addColumn("number", "Pending");
+        data.addRows(top.map(d => [d.lead, d.complete, d.pending]));
+      }
 
       const options = {
-        isStacked: true,
+        isStacked: selectedStatus === "All",
         legend: { position: "top", alignment: "end", textStyle: { fontSize: 11 } },
-        chartArea: { left: 210, top: 35, width: "70%", height: "72%" },
-        colors: ["#008c95", "#9aa3ad"],
+        chartArea: { left: 230, top: 35, width: "67%", height: "72%" },
+        colors: selectedStatus === "Pending" ? ["#9aa3ad"] : selectedStatus === "Complete" ? ["#008c95"] : ["#008c95", "#9aa3ad"],
         backgroundColor: "transparent",
         hAxis: { minValue: 0, gridlines: { color: "#e5e7eb" } },
         vAxis: { textStyle: { fontSize: 11 } }
@@ -504,33 +563,82 @@
       new google.visualization.BarChart(document.getElementById("barChart")).draw(data, options);
     }
 
-    function drawShare() {
+    function drawLeadShare(leadTotals, totalPPAP) {
+      const top = [...leadTotals]
+        .filter(d => d.total > 0)
+        .sort((a,b) => b.total - a.total);
+
+      const topFive = top.slice(0, 5);
+      const others = top.slice(5).reduce((sum, d) => sum + d.total, 0);
+
+      const rows = topFive.map(d => [d.lead, d.total]);
+      if (others > 0) rows.push(["Others", others]);
+      if (rows.length === 0) rows.push(["No data", 0]);
+
       const data = new google.visualization.DataTable();
-      data.addColumn("string", "Status");
+      data.addColumn("string", "Lead");
       data.addColumn("number", "PPAPs");
-      data.addRows([
-        ["Complete", totalComplete],
-        ["Pending", totalPending]
-      ]);
+      data.addRows(rows);
 
       const options = {
         pieHole: 0.55,
         chartArea: { left: 10, top: 20, width: "95%", height: "82%" },
-        colors: ["#007993", "#9aa3ad"],
+        colors: ["#00646b", "#007993", "#009999", "#4db6b6", "#7cc7c7", "#9aa3ad"],
         backgroundColor: "transparent",
         legend: { position: "right", textStyle: { fontSize: 11 } },
-        pieSliceText: "percentage"
+        pieSliceText: "percentage",
+        tooltip: { text: "percentage" }
       };
 
       new google.visualization.PieChart(document.getElementById("shareChart")).draw(data, options);
     }
 
-    function drawHeatmap() {
+    function drawStatusPctByLead(leadTotals) {
+      const selectedStatus = document.getElementById("statusFilter").value;
+      const baseTotals = getLeadTotals(rawData)
+        .filter(d => d.total > 0)
+        .sort((a,b) => b.total - a.total)
+        .slice(0, 8)
+        .reverse();
+
+      const data = new google.visualization.DataTable();
+      data.addColumn("string", "Lead");
+      data.addColumn("number", "Complete %");
+      data.addColumn("number", "Pending %");
+
+      data.addRows(baseTotals.map(d => {
+        const completePct = d.total === 0 ? 0 : (d.complete / d.total) * 100;
+        const pendingPct = d.total === 0 ? 0 : (d.pending / d.total) * 100;
+        return [d.lead, completePct, pendingPct];
+      }));
+
+      const options = {
+        isStacked: "percent",
+        legend: { position: "top", alignment: "end", textStyle: { fontSize: 11 } },
+        chartArea: { left: 230, top: 35, width: "67%", height: "72%" },
+        colors: ["#008c95", "#9aa3ad"],
+        backgroundColor: "transparent",
+        hAxis: {
+          minValue: 0,
+          maxValue: 1,
+          format: "percent",
+          gridlines: { color: "#e5e7eb" },
+          textStyle: { fontSize: 11 }
+        },
+        vAxis: { textStyle: { fontSize: 11 } },
+        tooltip: { isHtml: false }
+      };
+
+      new google.visualization.BarChart(document.getElementById("statusPctChart")).draw(data, options);
+    }
+
+    function drawHeatmap(data, leadTotals, totalsByMonth, totalPPAP, maxValue) {
       d3.select("#heatmap").selectAll("*").remove();
 
+      const selectedStatus = document.getElementById("statusFilter").value;
       const sortedLeads = [...leadTotals].sort((a,b) => b.total - a.total).map(d => d.lead);
       const sorted = sortedLeads.flatMap(lead =>
-        rawData
+        data
           .filter(d => d.lead === lead)
           .sort((a,b) => a.status.localeCompare(b.status))
       );
@@ -577,13 +685,13 @@
 
       const totalRow = body.append("tr").attr("class", "total-row");
       totalRow.append("td").attr("class", "lead").text("Total");
-      totalRow.append("td").attr("class", "status").text("");
+      totalRow.append("td").attr("class", "status").text(selectedStatus === "All" ? "" : selectedStatus);
       totalsByMonth.forEach(v => totalRow.append("td").text(v));
       totalRow.append("td").text(totalPPAP);
       totalRow.append("td").text((totalPPAP / months.length).toFixed(1));
     }
 
-    function drawChanges() {
+    function drawChanges(data, leadTotals) {
       d3.select("#changeList").selectAll("*").remove();
 
       const previousMonthIndex = months.indexOf("May 2026");
@@ -591,7 +699,7 @@
 
       const changes = leadTotals
         .map(d => {
-          const rows = rawData.filter(r => r.lead === d.lead);
+          const rows = data.filter(r => r.lead === d.lead);
           const current = rows.reduce((sum, r) => sum + r.values[currentMonthIndex], 0);
           const previous = rows.reduce((sum, r) => sum + r.values[previousMonthIndex], 0);
           return { lead: d.lead, current, previous, change: current - previous };
@@ -601,6 +709,15 @@
         .slice(0, 8);
 
       const box = d3.select("#changeList");
+
+      if (changes.length === 0) {
+        box.append("div")
+          .style("color", "#6b7280")
+          .style("font-size", "13px")
+          .style("padding", "10px 0")
+          .text("No activity in May or June for the selected status.");
+        return;
+      }
 
       changes.forEach(d => {
         const row = box.append("div").attr("class", "change-row");
@@ -612,7 +729,7 @@
       });
     }
 
-    window.addEventListener("resize", drawCharts);
+    window.addEventListener("resize", updateDashboard);
   </script>
 </body>
 </html>
