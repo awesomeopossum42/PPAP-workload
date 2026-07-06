@@ -294,8 +294,10 @@
           </select>
         </div>
         <div class="filter">
-          <label>Business</label>
-          <select><option>All</option></select>
+          <label>PPAP Lead</label>
+          <select id="leadFilter">
+            <option value="All">All</option>
+          </select>
         </div>
         <div class="filter">
           <label>Workflow Group</label>
@@ -436,11 +438,31 @@
     });
 
     document.getElementById("statusFilter").addEventListener("change", updateDashboard);
+    document.getElementById("leadFilter").addEventListener("change", updateDashboard);
+
+    function populateLeadFilter() {
+      const leadFilter = document.getElementById("leadFilter");
+      const leads = Array.from(new Set(rawData.map(d => d.lead))).sort();
+
+      leads.forEach(lead => {
+        const option = document.createElement("option");
+        option.value = lead;
+        option.textContent = lead;
+        leadFilter.appendChild(option);
+      });
+    }
+
+    populateLeadFilter();
 
     function getFilteredData() {
       const selectedStatus = document.getElementById("statusFilter").value;
-      if (selectedStatus === "All") return rawData;
-      return rawData.filter(d => d.status === selectedStatus);
+      const selectedLead = document.getElementById("leadFilter").value;
+
+      return rawData.filter(d => {
+        const statusMatch = selectedStatus === "All" || d.status === selectedStatus;
+        const leadMatch = selectedLead === "All" || d.lead === selectedLead;
+        return statusMatch && leadMatch;
+      });
     }
 
     function getLeadTotals(data) {
