@@ -283,14 +283,14 @@
 
       <div class="title">
         <h1>PPAP Load Analysis</h1>
-        <p>Complete and Pending PPAPs by PPAP Lead | Oct 1, 2025 - Jun 2026</p>
+        <p>Complete and Pending PPAPs by PPAP Lead | Oct 1, 2025 - Sep 2026</p>
       </div>
 
       <div class="filters">
         <div class="filter">
           <label>Date Range</label>
           <select>
-            <option>Oct 1, 2025 - Jun 2026</option>
+            <option>Oct 1, 2025 - Sep 2026</option>
           </select>
         </div>
         <div class="filter">
@@ -396,28 +396,208 @@
 
     <div class="footer">
       <div>Source: PPAP System | PPAPs by PPAP Lead and Status</div>
-      <div>June 2026 included</div>
+      <div>September 2026 included</div>
     </div>
   </div>
 
   <script>
     const months = [
-      "Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026",
-      "Mar 2026", "Apr 2026", "May 2026", "Jun 2026"
-    ];
+      "Oct 2025",
+      "Nov 2025",
+      "Dec 2025",
+      "Jan 2026",
+      "Feb 2026",
+      "Mar 2026",
+      "Apr 2026",
+      "May 2026",
+      "Jun 2026",
+      "Jul 2026",
+      "Aug 2026",
+      "Sep 2026"
+];
 
     const rawData = [
-      { lead: "AGUILAR RODRIGUEZ RAFAEL", status: "Pending", values: [0, 1, 0, 0, 0, 1, 0, 0, 0] },
-      { lead: "ALVARADO RODRIGUEZNETZAHUALCOYOTL", status: "Complete", values: [4, 10, 13, 9, 12, 31, 2, 2, 1] },
-      { lead: "ALVARADO RODRIGUEZNETZAHUALCOYOTL", status: "Pending", values: [4, 6, 2, 2, 4, 13, 1, 4, 1] },
-      { lead: "LANDEROS CERDAFERNANDO", status: "Complete", values: [1, 5, 1, 0, 0, 1, 10, 4, 5] },
-      { lead: "MORENO CHAVEZ IGNACIO", status: "Complete", values: [1, 1, 1, 0, 17, 5, 1, 6, 2] },
-      { lead: "MORENO CHAVEZ IGNACIO", status: "Pending", values: [0, 0, 0, 1, 4, 2, 15, 2, 0] },
-      { lead: "MORENO VALENCIA DANIEL ALEXANDRO", status: "Pending", values: [0, 0, 0, 0, 4, 6, 0, 1, 0] },
-      { lead: "Null", status: "Complete", values: [0, 0, 1, 1, 0, 2, 1, 0, 2] },
-      { lead: "RODRIGUEZ GARCIA RUBEN", status: "Complete", values: [1, 0, 0, 1, 0, 0, 0, 0, 0] },
-      { lead: "RODRIGUEZ GARCIA RUBEN", status: "Pending", values: [7, 0, 5, 0, 1, 0, 0, 0, 0] }
-    ];
+      {
+            "lead": "AGUILAR RODRIGUEZ RAFAEL",
+            "status": "Pending",
+            "values": [
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  2,
+                  0
+            ]
+      },
+      {
+            "lead": "ALVARADO RODRIGUEZNETZAHUALCOYOTL",
+            "status": "Complete",
+            "values": [
+                  4,
+                  10,
+                  13,
+                  9,
+                  12,
+                  31,
+                  2,
+                  2,
+                  1,
+                  1,
+                  0,
+                  7
+            ]
+      },
+      {
+            "lead": "ALVARADO RODRIGUEZNETZAHUALCOYOTL",
+            "status": "Pending",
+            "values": [
+                  4,
+                  6,
+                  2,
+                  2,
+                  4,
+                  13,
+                  1,
+                  4,
+                  1,
+                  11,
+                  2,
+                  0
+            ]
+      },
+      {
+            "lead": "LANDEROS CERDAFERNANDO",
+            "status": "Complete",
+            "values": [
+                  1,
+                  5,
+                  1,
+                  0,
+                  0,
+                  1,
+                  10,
+                  4,
+                  5,
+                  0,
+                  3,
+                  0
+            ]
+      },
+      {
+            "lead": "MORENO CHAVEZ IGNACIO",
+            "status": "Complete",
+            "values": [
+                  1,
+                  1,
+                  1,
+                  0,
+                  17,
+                  5,
+                  1,
+                  6,
+                  2,
+                  5,
+                  2,
+                  12
+            ]
+      },
+      {
+            "lead": "MORENO CHAVEZ IGNACIO",
+            "status": "Pending",
+            "values": [
+                  0,
+                  0,
+                  0,
+                  1,
+                  4,
+                  2,
+                  15,
+                  2,
+                  0,
+                  7,
+                  6,
+                  33
+            ]
+      },
+      {
+            "lead": "MORENO VALENCIA DANIEL ALEXANDRO",
+            "status": "Pending",
+            "values": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  4,
+                  6,
+                  0,
+                  1,
+                  0,
+                  0,
+                  4,
+                  1
+            ]
+      },
+      {
+            "lead": "Null",
+            "status": "Complete",
+            "values": [
+                  0,
+                  0,
+                  1,
+                  1,
+                  0,
+                  2,
+                  1,
+                  0,
+                  2,
+                  4,
+                  1,
+                  3
+            ]
+      },
+      {
+            "lead": "RODRIGUEZ GARCIA RUBEN",
+            "status": "Complete",
+            "values": [
+                  1,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+            ]
+      },
+      {
+            "lead": "RODRIGUEZ GARCIA RUBEN",
+            "status": "Pending",
+            "values": [
+                  7,
+                  0,
+                  5,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+            ]
+      }
+];
 
     let chartsReady = false;
 
@@ -706,8 +886,8 @@
     function drawChanges(data, leadTotals) {
       d3.select("#changeList").selectAll("*").remove();
 
-      const previousMonthIndex = months.indexOf("May 2026");
-      const currentMonthIndex = months.indexOf("Jun 2026");
+      const previousMonthIndex = months.indexOf("Aug 2026");
+      const currentMonthIndex = months.indexOf("Sep 2026");
 
       const changes = leadTotals
         .map(d => {
@@ -727,7 +907,7 @@
           .style("color", "#6b7280")
           .style("font-size", "13px")
           .style("padding", "10px 0")
-          .text("No activity in May or June for the selected status.");
+          .text("No activity in August or September for the selected status.");
         return;
       }
 
